@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>自然表情雨</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: #0f172a;
+            font-family: sans-serif;
+            color: white;
+        }
+
+        /* 顶部触发按钮 */
+        .toolbar {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            z-index: 10;
+            display: flex;
+            gap: 6px;
+        }
+
+        button {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 6px;
+            background: #22d3ee;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .emoji {
+            position: absolute;
+            pointer-events: none;
+            user-select: none;
+            will-change: transform;
+        }
+
+        /* 下落动画：纯垂直，不旋转，不闪动 */
+        @keyframes drop {
+            from {
+                transform: translateY(-100px);
+            }
+
+            to {
+                transform: translateY(120vh);
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="toolbar">
+        <button onclick="startEmojiRain(['🎉','✨','🎊'])">彩带雨</button>
+        <button onclick="startEmojiRain(['❤️','💖','💕'])">爱心雨</button>
+        <button onclick="startEmojiRain(['😂','🤣'])">笑哭雨</button>
+    </div>
+
+    <script>
+        /**
+         * @param {string[]} emojis - 多个表情组合
+         */
+        function startEmojiRain(emojis) {
+            const count = 40; // 一次下落生成数量，可随意调大
+
+            for (let i = 0; i < count; i++) {
+                createDrop(emojis);
+            }
+        }
+
+        function createDrop(emojis) {
+            const emoji = emojis[Math.floor(Math.random() * emojis.length)];
+            const el = document.createElement("div");
+            el.className = "emoji";
+            el.textContent = emoji;
+
+            // 随机大小
+            const size = Math.random() * 30 + 24; // 24px - 54px
+            el.style.fontSize = size + "px";
+
+            // 随机水平位置
+            el.style.left = Math.random() * 100 + "vw";
+
+            // 随机速度
+            const duration = Math.random() * 2 + 3; // 3s - 5s
+            el.style.animation = `drop ${duration}s linear`;
+
+            document.body.appendChild(el);
+
+            // 动画结束后自动删除
+            el.addEventListener("animationend", () => el.remove());
+        }
+    </script>
+
+</body>
+
+</html>

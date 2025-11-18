@@ -1,0 +1,411 @@
+<!doctype html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>表情雨示例</title>
+    <style>
+        :root {
+            --bg: #0f1724;
+            --panel: #0b1220;
+            --accent: #2dd4bf;
+            --text: #e6eef6;
+        }
+
+        * {
+            box-sizing: border-box
+        }
+
+        html,
+        body {
+            height: 100%;
+            margin: 0;
+            font-family: system-ui, -apple-system, "Segoe UI", Roboto, "PingFang SC", "Hiragino Sans GB", "Microsoft Yahei", sans-serif;
+            background: var(--bg);
+            color: var(--text)
+        }
+
+        .app {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        /* 顶部演示区 */
+        .stage {
+            position: relative;
+            flex: 1;
+            overflow: hidden;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .center-hint {
+            position: absolute;
+            top: 16px;
+            left: 16px;
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        /* 聊天面板（简化） */
+        .chat-panel {
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0.01));
+            padding: 12px;
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .input {
+            flex: 1;
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        input[type="text"] {
+            flex: 1;
+            padding: 10px 12px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            background: transparent;
+            color: var(--text);
+            outline: none;
+            font-size: 15px;
+        }
+
+        button {
+            background: var(--accent);
+            border: none;
+            color: #042826;
+            padding: 10px 14px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        button:active {
+            transform: translateY(1px)
+        }
+
+        .controls {
+            display: flex;
+            gap: 8px;
+            align-items: center
+        }
+
+        /* 表情单元样式（使用动画） */
+        .emoji {
+            position: absolute;
+            pointer-events: none;
+            will-change: transform, opacity;
+            user-select: none;
+            display: inline-block;
+            text-align: center;
+            transform-origin: center;
+            filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.5));
+            /* animation is set inline for duration/delay */
+        }
+
+        /* keyframes: 从页面上方掉到下方，同时轻微旋转与透明度变化 */
+        @keyframes fall {
+            0% {
+                transform: translateY(-30vh) rotate(0deg);
+                opacity: 0;
+            }
+
+            10% {
+                opacity: 1;
+            }
+
+            100% {
+                transform: translateY(120vh) rotate(720deg);
+                opacity: 0.9;
+            }
+        }
+
+        /* 简单响应式 */
+        @media (max-width:600px) {
+            .center-hint {
+                display: none
+            }
+
+            input[type="text"] {
+                font-size: 14px
+            }
+        }
+
+        /* 小提示文字样式 */
+        .meta {
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.6);
+            margin-left: 8px;
+        }
+
+        /* 控制面板 */
+        .panel {
+            position: absolute;
+            right: 16px;
+            top: 16px;
+            background: rgba(255, 255, 255, 0.02);
+            padding: 8px;
+            border-radius: 10px;
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            z-index: 20;
+            backdrop-filter: blur(6px);
+        }
+
+        .emoji-picker {
+            display: flex;
+            gap: 6px
+        }
+
+        .emoji-btn {
+            font-size: 20px;
+            padding: 6px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.03);
+            background: transparent;
+            cursor: pointer
+        }
+
+        .slider {
+            width: 120px
+        }
+    </style>
+</head>
+
+<body>
+    <div class="app">
+        <div class="stage" id="stage">
+            <div class="center-hint">发送 <code>/emojirain</code> 或 直接发送一个表情（例如 "🎉"）来触发表情雨</div>
+
+            <!-- 控制面板（可选的快速选择） -->
+            <div class="panel" id="panel">
+                <div class="emoji-picker" id="emojiPicker">
+                    <button class="emoji-btn">🎉</button>
+                    <button class="emoji-btn">❤️</button>
+                    <button class="emoji-btn">😂</button>
+                    <button class="emoji-btn">🔥</button>
+                    <button class="emoji-btn">✨</button>
+                </div>
+                <div class="meta">强度</div>
+                <input id="intensity" class="slider" type="range" min="5" max="120" value="36" />
+            </div>
+        </div>
+
+        <div class="chat-panel">
+            <div class="input">
+                <input id="messageInput" type="text" placeholder="输入消息，回车或点击发送。" />
+                <button id="sendBtn">发送</button>
+            </div>
+            <div class="controls">
+                <div class="meta">触发词：<code>/emojirain</code></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        (function () {
+            const stage = document.getElementById('stage');
+            const input = document.getElementById('messageInput');
+            const sendBtn = document.getElementById('sendBtn');
+            const intensityRange = document.getElementById('intensity');
+            const emojiPicker = document.getElementById('emojiPicker');
+
+            // 默认触发词
+            const TRIGGER = '/emojirain';
+
+            // 如果用户直接输入单个 emoji（或只有 emoji），也触发（简单检测）
+            function isSingleEmoji(text) {
+                if (!text) return false;
+                text = text.trim();
+                // 简单规则：如果长度（去除空白）小于或等于4个 UTF-16 code units 且包含非字母数字
+                // 这个不是完美的 emoji 检测，但对于常见 emoji 足够。
+                return /[\u{1F300}-\u{1FAFF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/u.test(text) && [...text].length <= 4;
+            }
+
+            // 生成一次表情雨
+            // options: {emoji, count}
+            function spawnEmojiRain(options = {}) {
+                const emoji = options.emoji || '🎉';
+                const count = options.count || parseInt(intensityRange.value, 10) || 36;
+                const stageRect = stage.getBoundingClientRect();
+
+                for (let i = 0; i < count; i++) {
+                    createEmojiNode(emoji, stageRect);
+                }
+            }
+
+            function createEmojiNode(emoji, stageRect) {
+                const el = document.createElement('div');
+                el.className = 'emoji';
+                el.textContent = emoji;
+
+                // size
+                const minSize = 18, maxSize = 72;
+                const size = Math.floor(Math.random() * (maxSize - minSize + 1)) + minSize;
+                el.style.fontSize = size + 'px';
+
+                // horizontal position: allow a bit of overflow left/right for nicer effect
+                const left = Math.random() * 100; // percent
+                el.style.left = left + '%';
+
+                // rotation start (we will use CSS animation to rotate via transform)
+                const rotateStart = Math.floor(Math.random() * 360);
+                el.style.transform = `translateY(-40vh) rotate(${rotateStart}deg)`;
+
+                // animation duration (longer for larger screens)
+                const minDur = 3.5, maxDur = 10;
+                const duration = (Math.random() * (maxDur - minDur)) + minDur;
+                // horizontal sway via CSS animation not provided; we can add tiny side translation via animation-timing-function, but easier: add random x-offset as starting left + small CSS var animation via keyframes -> simpler: vary left with transformX using translateX periodicity via CSS variable? To keep simple, we randomize animation duration and add slight transform on creation.
+
+                // slight horizontal drift by animating translateX using CSS animation delay+duration (inline style not used),
+                // but we'll use the fall keyframe which rotates and translates Y; to get drift, apply an initial translateX via transform and animate translateX via another keyframe would be more complex.
+                // For simplicity, we set a CSS variable for custom rotation and rely on varying left & size for variety.
+
+                el.style.animation = `fall ${duration}s linear ${Math.random() * 0.6}s forwards`;
+                // random z-index so some emojis appear above others
+                el.style.zIndex = Math.floor(Math.random() * 1000);
+
+                // tiny horizontal oscillation using CSS transition on transform during animation is tricky;
+                // we'll periodically nudge with JS for a subtle sway effect (low cost).
+                stage.appendChild(el);
+
+                // add small random horizontal offset and sway by applying inline transform updates occasionally
+                const swayAmplitude = (Math.random() * 60) - 30; // px
+                const swayFreq = 500 + Math.random() * 1200; // ms
+                let start = performance.now();
+                let swayId = null;
+
+                function swayStep(ts) {
+                    const elapsed = ts - start;
+                    // progress from 0 to 1 based on animation duration
+                    // we won't know exact animation timeline matching, but it's ok for visual
+                    const progress = Math.min(elapsed / (duration * 1000), 1);
+                    // small sinusoidal sway that decays near the end
+                    const decay = 1 - progress;
+                    const x = Math.sin(elapsed / swayFreq * Math.PI * 2) * swayAmplitude * decay;
+                    // current translateY is handled by CSS animation, we only add translateX here
+                    el.style.transform = `translateX(${x}px) translateY(-40vh) rotate(${rotateStart + progress * 720}deg)`;
+                    if (progress < 1 && el.parentElement) {
+                        swayId = requestAnimationFrame(swayStep);
+                    }
+                }
+                swayId = requestAnimationFrame(swayStep);
+
+                // Remove DOM after animation end
+                el.addEventListener('animationend', () => {
+                    if (swayId) cancelAnimationFrame(swayId);
+                    if (el.parentElement) el.parentElement.removeChild(el);
+                });
+
+                // Safety: also remove after max timeout in case animationend doesn't fire
+                setTimeout(() => {
+                    if (el.parentElement) el.parentElement.removeChild(el);
+                    if (swayId) cancelAnimationFrame(swayId);
+                }, (duration + 2) * 1000);
+            }
+
+            // 发送按钮或回车事件
+            function handleSend() {
+                const text = input.value.trim();
+                if (!text) return;
+                // Clear input (simulate message sent)
+                input.value = '';
+
+                // detect trigger
+                if (text === TRIGGER) {
+                    // 默认 emoji 雨（混合几种）
+                    const emojis = ['🎉', '✨', '🎊', '💖', '🎈', '🔥', '🌟', '❤️', '😂'];
+                    // spawn a mixed rain by picking randomly for each drop
+                    const count = parseInt(intensityRange.value, 10) || 36;
+                    // spawn in small batches to look nicer
+                    const batches = 6;
+                    for (let b = 0; b < batches; b++) {
+                        setTimeout(() => {
+                            for (let i = 0; i < Math.ceil(count / batches); i++) {
+                                const e = emojis[Math.floor(Math.random() * emojis.length)];
+                                createEmojiNode(e, stage.getBoundingClientRect());
+                            }
+                        }, b * 120);
+                    }
+                    return;
+                }
+
+                // if the message is just a single emoji, spawn that emoji as rain
+                if (isSingleEmoji(text)) {
+                    spawnEmojiRain({ emoji: text, count: parseInt(intensityRange.value, 10) || 36 });
+                    return;
+                }
+
+                // otherwise this is a normal message — in a full chat app you'd append it to the conversation.
+                // For this demo we just briefly flash the message in the stage corner
+                const hint = document.createElement('div');
+                hint.textContent = text;
+                hint.style.position = 'absolute';
+                hint.style.bottom = '16px';
+                hint.style.left = '16px';
+                hint.style.padding = '8px 12px';
+                hint.style.background = 'rgba(0,0,0,0.4)';
+                hint.style.borderRadius = '8px';
+                hint.style.color = '#fff';
+                hint.style.zIndex = 9999;
+                stage.appendChild(hint);
+                setTimeout(() => { if (hint.parentElement) hint.parentElement.removeChild(hint) }, 2500);
+            }
+
+            // wire up events
+            sendBtn.addEventListener('click', handleSend);
+            input.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') handleSend();
+            });
+
+            // clicking quick-emoji buttons triggers rain of that emoji
+            emojiPicker.addEventListener('click', (e) => {
+                const btn = e.target.closest('.emoji-btn');
+                if (!btn) return;
+                const emoji = btn.textContent.trim();
+                spawnEmojiRain({ emoji, count: Math.max(10, parseInt(intensityRange.value, 10) || 36) });
+            });
+
+            // nice: support paste of emojis (mobile)
+            input.addEventListener('paste', (e) => {
+                setTimeout(() => {
+                    const v = input.value.trim();
+                    if (isSingleEmoji(v)) {
+                        // small delay then trigger so user sees input cleared
+                        setTimeout(() => spawnEmojiRain({ emoji: v, count: parseInt(intensityRange.value, 10) || 36 }), 50);
+                    }
+                }, 20);
+            });
+
+            // accessibility: respect reduced-motion prefers-reduced-motion
+            const prefersReduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+            if (prefersReduced) {
+                // if user prefers reduced motion, reduce intensity and durations
+                intensityRange.value = Math.min(12, intensityRange.value);
+            }
+
+            // initial demo: show small welcoming rain after 600ms
+            window.addEventListener('load', () => {
+                setTimeout(() => {
+                    // small celebratory rain
+                    spawnEmojiRain({ emoji: '✨', count: 12 });
+                }, 600);
+            });
+
+            // Expose for debugging
+            window._spawnEmojiRain = spawnEmojiRain;
+        })();
+    </script>
+</body>
+
+</html>

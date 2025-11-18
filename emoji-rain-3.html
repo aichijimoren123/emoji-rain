@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>微信风格表情雨（自然版）</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: #0f172a;
+            color: white;
+            font-family: sans-serif;
+        }
+
+        /* 简单输入框 */
+        .input-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: 12px;
+            background: rgba(0, 0, 0, 0.3);
+            display: flex;
+            gap: 8px;
+        }
+
+        input {
+            flex: 1;
+            padding: 8px 12px;
+            border-radius: 6px;
+            border: none;
+            outline: none;
+            font-size: 16px;
+        }
+
+        button {
+            padding: 8px 16px;
+            border: none;
+            background: #22d3ee;
+            font-weight: bold;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        /* 下落动画：只做垂直移动，不旋转、不透明度变化 */
+        @keyframes fall {
+            from {
+                transform: translateY(-80px);
+            }
+
+            to {
+                transform: translateY(110vh);
+            }
+        }
+
+        .emoji {
+            position: absolute;
+            pointer-events: none;
+            user-select: none;
+            will-change: transform;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="input-bar">
+        <input id="msg" placeholder="输入消息，如：生日快乐 / 爱你 / 😂🤣" />
+        <button onclick="sendMessage()">发送</button>
+    </div>
+
+    <script>
+        /**
+         * 🌟 表情触发词配置
+         * message → 表情数组
+         */
+        const EMOJI_MAP = {
+            "生日快乐": ["🎂", "🎉", "✨"],
+            "我爱你": ["❤️", "💖", "💕"],
+            "哈哈": ["😂", "🤣"],
+            "发财": ["🧧", "💰", "🪙"]
+        };
+
+        /**
+         * 🌟 触发表情雨
+         */
+        function triggerEmojiRain(emojiList) {
+            const count = 12; // 少量即可，更自然
+            let index = 0;
+
+            function dropNext() {
+                if (index >= count) return;
+                createDrop(emojiList);
+                index++;
+
+                // 🌟 每个表情间隔随机 80ms - 200ms，更自然
+                const delay = 80 + Math.random() * 120;
+                setTimeout(dropNext, delay);
+            }
+
+            dropNext();
+        }
+
+        /**
+         * 🌟 创建一个下落的表情
+         */
+        function createDrop(emojiList) {
+            const emoji = emojiList[Math.floor(Math.random() * emojiList.length)];
+
+            const el = document.createElement("div");
+            el.className = "emoji";
+            el.textContent = emoji;
+
+            // 随机大小（更像微信）
+            const size = 36 + Math.random() * 22; // 36px - 58px
+            el.style.fontSize = size + "px";
+
+            // 随机水平位置
+            el.style.left = Math.random() * 100 + "vw";
+
+            // 🌟 固定随机角度（例如 -40° ~ 40°）
+            const angle = (Math.random() * 80 - 40).toFixed(1);
+            el.style.transform = `rotate(${angle}deg)`;
+
+            // 设置动画
+            const duration = 2.8 + Math.random() * 1.5; // 2.8 ~ 4.3 秒
+            el.style.animation = `fall ${duration}s linear`;
+
+            document.body.appendChild(el);
+
+            // 动画结束删除
+            el.addEventListener("animationend", () => el.remove());
+        }
+
+        /**
+         * 🌟 模拟聊天发送
+         */
+        function sendMessage() {
+            const msg = document.getElementById("msg").value.trim();
+            if (!msg) return;
+
+            // 检查触发词
+            for (const key in EMOJI_MAP) {
+                if (msg.includes(key)) {
+                    triggerEmojiRain(EMOJI_MAP[key]);
+                    break;
+                }
+            }
+
+            document.getElementById("msg").value = "";
+        }
+    </script>
+</body>
+
+</html>

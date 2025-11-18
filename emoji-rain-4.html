@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>微信风格表情雨（修复旋转版）</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: #0f172a;
+            color: white;
+            font-family: sans-serif;
+        }
+
+        .input-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: 12px;
+            background: rgba(0, 0, 0, 0.3);
+            display: flex;
+            gap: 8px;
+        }
+
+        input {
+            flex: 1;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 16px;
+            border: none;
+            outline: none;
+        }
+
+        button {
+            padding: 8px 16px;
+            border: none;
+            background: #22d3ee;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        /* 下落动画，仅包含 Y 方向移动 */
+        @keyframes fall {
+            from {
+                transform: translateY(-80px);
+            }
+
+            to {
+                transform: translateY(110vh);
+            }
+        }
+
+        /* 外层：负责角度旋转 */
+        .emoji {
+            position: absolute;
+            pointer-events: none;
+            user-select: none;
+            will-change: transform;
+        }
+
+        /* 内层：只负责下落 */
+        .inner {
+            animation: fall linear forwards;
+            will-change: transform;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="input-bar">
+        <input id="msg" placeholder="输入消息，如：生日快乐 / 我爱你 / 哈哈" />
+        <button onclick="sendMessage()">发送</button>
+    </div>
+
+    <script>
+        const EMOJI_MAP = {
+            "生日快乐": ["🎂", "🎉", "✨"],
+            "我爱你": ["❤️", "💖", "💕"],
+            "哈哈": ["😂", "🤣"],
+            "发财": ["🧧", "💰", "🪙"]
+        };
+
+        function triggerEmojiRain(list) {
+            const count = 12;
+            let i = 0;
+
+            function drop() {
+                if (i >= count) return;
+                createDrop(list);
+                i++;
+                setTimeout(drop, 80 + Math.random() * 120); // 逐个掉落
+            }
+
+            drop();
+        }
+
+        function createDrop(list) {
+            const emoji = list[Math.floor(Math.random() * list.length)];
+
+            const wrapper = document.createElement("div");
+            wrapper.className = "emoji";
+
+            const inner = document.createElement("div");
+            inner.className = "inner";
+            inner.textContent = emoji;
+
+            wrapper.appendChild(inner);
+
+            // 随机大小
+            const size = 36 + Math.random() * 20;
+            inner.style.fontSize = size + "px";
+
+            // 随机水平位置
+            wrapper.style.left = Math.random() * 100 + "vw";
+
+            // ⭐ 固定随机角度（不会被动画覆盖）
+            const angle = Math.random() * 80 - 40; // -40° ~ 40°
+            wrapper.style.transform = `rotate(${angle}deg)`;
+
+            // 下落速度
+            const duration = 2.8 + Math.random() * 1.5;
+            inner.style.animationDuration = duration + "s";
+
+            document.body.appendChild(wrapper);
+
+            inner.addEventListener("animationend", () => wrapper.remove());
+        }
+
+        function sendMessage() {
+            const msg = msgInput.value.trim();
+            if (!msg) return;
+
+            for (let key in EMOJI_MAP) {
+                if (msg.includes(key)) {
+                    triggerEmojiRain(EMOJI_MAP[key]);
+                    break;
+                }
+            }
+
+            msgInput.value = "";
+        }
+
+        const msgInput = document.getElementById("msg");
+    </script>
+
+</body>
+
+</html>
